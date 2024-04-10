@@ -15,19 +15,19 @@ class MyLineReg():
         return f"MyLineReg class: n_iter={self.n_iter}, learning_rate={self.learning_rate}"
 
     def mae(self, y_predict, y, n):
-        return np.sum((y_predict - y) ** 2) * 1 / n
+        return 1 / n * sum(abs(y - y_predict))
 
     def mse(self, y_predict, y, n):
-        return np.sum(abs(y_predict - y)) * 1 / n
+        return np.sum((y - y_predict) ** 2) / n
 
     def rmse(self, y_predict, y, n):
-        return np.sqrt(np.sum((y_predict - y) ** 2) * 1 / n)
+        return np.sqrt(np.sum((y - y_predict) ** 2) / n)
 
     def r2(self, y_predict, y, n):
-        return 1 - np.sum((y_predict - y) ** 2) / np.sum((y_predict - y.mean()) ** 2)
+        return 1 - np.sum((y_predict - y) ** 2) / np.sum((y - y.mean()) ** 2)
 
     def mape(self, y_predict, y, n):
-        return 100. / n * np.sum(np.abs((y_predict - y) / y.mean()))
+        return 100. / n * np.sum(np.abs((y_predict - y) / y))
 
     # def log(self, **kwargs):
     #     if not (self.metric is None):
@@ -42,35 +42,32 @@ class MyLineReg():
     #             print(f'{kwargs['iteration']} | loss: {kwargs['loss']}')
 
     def fit(self, X: pd.DataFrame, y: pd.Series, verbose=0):
-        n, m = X.shape
-        one_col = pd.Series(np.ones(n))
+        one_col = pd.Series(np.ones(X.shape[0]))
         X = pd.concat([one_col, X], axis=1)
         metric = None
-        match self.metric:
-            case 'mae':
-                metric = self.mae
-            case 'mse':
-                metric = self.mse
-            case 'rmse':
-                metric = self.rmse
-            case 'r2':
-                metric = self.r2
-            case 'mape':
-                metric = self.mape
-
-        self.weights = np.ones(m + 1)
+        if self.metric == 'mae':
+            metric = self.mae
+        elif self.metric == 'mse':
+            metric = self.mse
+        elif self.metric == 'rmse':
+            metric = self.rmse
+        elif self.metric == 'r2':
+            metric = self.r2
+        elif self.metric == 'mape':
+            metric = self.mape
+        self.weights = np.ones(X.shape[1])
+        y_predict = 0
         for i in range(self.n_iter):
-            y_predict = X @ self.weights  # np.dot(X, self.weights)
-            # mse = np.sum((y_predict - y)**2) * 1 / n
-            self.best_score = metric(y_predict, y, n)
-            # if score < self.best_score or self.best_score == -1:
-            #     self.best_score = score
-            grt = 2 / n * (y_predict - y) @ X
+            y_predict = X @ self.weights
+            self.best_score = metric(y_predict, y, X.shape[0])
+            grt = 2 / X.shape[0] * (y_predict - y) @ X
             self.weights -= self.learning_rate * grt
             # if verbose:
             #     self.log(iteration=i, metric=self.best_score,
             #              verbose=verbose, metric_name=self.metric,
             #              loss=self.mse(y_predict, y, n))
+        y_predict = X @ self.weights
+        self.best_score = metric(y_predict, y, X.shape[0])
 
     def predict(self, X: pd.DataFrame):
         one_col = pd.Series(np.ones(X.shape[0]))
@@ -81,6 +78,7 @@ class MyLineReg():
         return self.weights[1:]
 
     def get_best_score(self):
+
         return self.best_score
 
 
